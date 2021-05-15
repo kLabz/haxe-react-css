@@ -1,0 +1,22 @@
+-lib react-next
+-lib react-css
+
+-cp src
+-main Main
+-js bin/index.js
+
+-debug
+
+# Configure react-css
+-D react.css.base=res/base.css
+-D react.css.out=bin/styles.css
+# -D react.css.salt=Aidohx7e
+# -D react.css.sourcemap=styles.css.map
+
+# Configure react-next
+-D react-runtime-warnings
+-D react-wrap-strict
+-D react-runtime-warnings-ignore-rerender
+-D react-check-jsxstatic-type
+-D react-auto-jsx
+-D react-disable-dynamic-components
