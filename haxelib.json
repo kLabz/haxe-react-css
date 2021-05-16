@@ -12,7 +12,5 @@
   "version": "1.0.0",
   "url": "https://github.com/kLabz/haxe-react-css",
   "classPath": "src",
-  "dependencies": {
-    "react-next": ""
-  }
+  "dependencies": {}
 }
