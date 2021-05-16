@@ -57,6 +57,27 @@ class ReactCSSMacro {
 
 	static function builder(cls:ClassType, fields:Array<Field>):Array<Field> {
 		if (!cls.meta.has(META_NAME)) return fields;
+
+		// Skip build during completion,
+		// but hide `styles` field unless it has `@:keep` meta
+		if (Context.defined('display')) {
+			for (f in fields) {
+				if (f.name != STYLES_FIELD) continue;
+
+				if (!Lambda.exists(f.meta, m -> m.name == ':keep')) {
+					f.meta.push({
+						name: ':noCompletion',
+						pos: f.pos,
+						params: []
+					});
+				}
+
+				break;
+			}
+
+			return fields;
+		}
+
 		var meta = cls.meta.get().filter(m -> m.name == META_NAME)[0];
 		initPersistentData();
 
