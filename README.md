@@ -16,8 +16,14 @@ should work with [haxe-react][haxe-react] too, or only with minor adjustments (P
 Version >= 0.9.0 of [css-types][css-types] is needed, unless you're using plain string CSS
 in your components (see below).
 
-This lib is still not released on haxelib, but you can install it with `haxelib
-git`:
+Install latest release from haxelib:
+
+```sh
+haxelib install react-css
+```
+
+This lib is still on heavy developpement, you might want to use git version if
+latest haxelib release is outdated:
 
 ```sh
 haxelib git react-css git@github.com:kLabz/haxe-react-css.git
