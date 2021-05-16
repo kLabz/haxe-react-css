@@ -212,7 +212,7 @@ class ReactCSSMacro {
 
 								if (f.quotes.match(Quoted)) {
 									// TODO: only allow when starting with hyphen?
-									t = ComplexTypeTools.toType(macro :css.Properties.SingleOrMultipleNumber);
+									t = ComplexTypeTools.toType(macro :css.Properties.CSSNumberOrArray);
 								} else {
 									// Check for extra fields, make sure typing fits
 									t = Context.typeof(macro @:pos(f.expr.pos) {
@@ -338,11 +338,11 @@ class ReactCSSMacro {
 										switch (t) {
 											case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
 												switch (a.name) {
-													case "SingleOrMultipleLength":
+													case "CSSLengthOrArray":
 														// Note: can't be an array, we're in EConst case
 														buf.add(resolveCSSLength(val));
 
-													case "SingleOrMultipleNumber":
+													case "CSSNumberOrArray":
 														// Note: can't be an array, we're in EConst case
 														buf.add(resolveCSSNumber(val));
 
