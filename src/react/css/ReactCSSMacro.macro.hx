@@ -30,16 +30,16 @@ typedef CssModule = {
 class ReactCSSMacro {
 	public static inline var BUILDER_KEY = 'REACT_CSS';
 
-	public static inline var META_NAME = ':css';
-	public static inline var PRIORITY_META_NAME = ':css.priority';
+	public static var META_NAME = ':css';
+	public static var PRIORITY_META_NAME = ':css.priority';
 
-	public static inline var STYLES_FIELD = 'styles';
-	public static inline var CLASSNAME_FIELD = 'className';
+	public static var STYLES_FIELD = 'styles';
+	public static var CLASSNAME_FIELD = 'className';
 
-	public static inline var BASE_DEFINE = 'react.css.base';
-	public static inline var OUT_DEFINE = 'react.css.out';
-	public static inline var SALT_DEFINE = 'react.css.salt';
-	public static inline var SOURCEMAP_DEFINE = 'react.css.sourcemap';
+	public static var BASE_DEFINE = 'react.css.base';
+	public static var OUT_DEFINE = 'react.css.out';
+	public static var SALT_DEFINE = 'react.css.salt';
+	public static var SOURCEMAP_DEFINE = 'react.css.sourcemap';
 
 	static var hasChanged:Bool = false;
 	@:persistent static var lastBase:Null<String>;
