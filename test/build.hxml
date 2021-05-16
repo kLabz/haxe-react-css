@@ -1,0 +1,18 @@
+-lib react-next
+-lib react-css
+-lib css-types
+
+-cp src
+comp.OtherComponent
+comp.TestComponent
+comp.ThirdComponent
+-js bin/index.js
+
+# Configure react-css
+-D react.css.base=base.css
+-D react.css.out=out/styles.css
+# -D react.css.salt=Aidohx7e
+# -D react.css.sourcemap=styles.css.map
+
+# Configure react-next
+-D react-auto-jsx

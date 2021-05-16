@@ -1,0 +1,33 @@
+body {
+	color: blue;
+}
+
+.OtherComponent-aa0acc {
+	color: green;
+}
+
+
+	.ThirdComponent-929d49 {
+		color: orange;
+	}
+
+.TestComponent-3f9f92 {
+	color: red;
+	position: relative;
+	padding: 4px;
+	margin: 0px 0.3em;
+}
+.TestComponent-3f9f92::before {
+	content: "[before] ";
+}
+.TestComponent-3f9f92 + .TestComponent-3f9f92::before {
+	content: "[before second item] ";
+}
+.TestComponent-3f9f92 + .OtherComponent-aa0acc {
+	text-align: center;
+	font-size: inherit;
+	font-weight: bold;
+	--blargh: 42;
+	z-index: var(--blargh);
+}
+

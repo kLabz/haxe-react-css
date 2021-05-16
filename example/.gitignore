@@ -1,6 +1,0 @@
-node_modules/**
-.parcel-cache/**
-dist/**
-bin/index.js*
-bin/styles.css*
-package-lock.json
