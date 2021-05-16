@@ -4,8 +4,9 @@ Compile-time "CSS in Haxe" library, allowing you to write your CSS in a per
 component basis, only include the ones you actually use, and generate a good ol'
 CSS file at compile time. No runtime CSS generation, no inline CSS.
 
-Note that this lib is still in early alpha status, and doesn't catch corner
-cases nicely; but is already usable.
+Note that this lib is still in early alpha status. If you get errors from
+something that should work in your opinion, please let me know by opening an
+issue.
 
 ## Installation
 
@@ -289,10 +290,8 @@ Which will generate, with a state of `{selected: true, active: false}`:
 * Currently, identifiers are not allowed as values, see [#2](https://github.com/kLabz/haxe-react-css/issues/2)
 * Similarily, string interpolation is not applied in values, see [#3](https://github.com/kLabz/haxe-react-css/issues/3)
 
-This lib is still in early alpha status, and doesn't catch corner cases nicely.
-User errors will still often give bad error messages. If you get errors from
-something that should work in your opinion, please let me know by opening an
-issue.
+This lib is still in early alpha status. If you get errors from something that
+should work in your opinion, please let me know by opening an issue.
 
 [material-ui]: https://github.com/kLabz/haxe-material-ui
 [react-next]: https://github.com/kLabz/haxe-react
