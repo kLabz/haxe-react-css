@@ -144,7 +144,7 @@ class ReactCSSMacro {
 	static function getHash(path:String):String {
 		var key = path;
 		if (Context.defined(SALT_DEFINE)) key = Context.definedValue(SALT_DEFINE) + key;
-		var hash = Sha256.encode(path).substr(0, 6);
+		var hash = Sha256.encode(key).substr(0, 6);
 		if (cssModules.exists(hash)) return getHash(path + '_');
 		return hash;
 	}
