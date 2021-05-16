@@ -1,18 +1,17 @@
 package react.css;
 
-import haxe.macro.ComplexTypeTools;
-import css.Properties;
-
 import haxe.EnumTools;
-import haxe.macro.ExprTools;
 import haxe.crypto.Sha256;
 import haxe.io.Path;
+import haxe.macro.ComplexTypeTools;
 import haxe.macro.Context;
 import haxe.macro.Expr;
+import haxe.macro.ExprTools;
 import haxe.macro.Type;
 import sys.FileSystem;
 import sys.io.File;
 
+#if css_types import css.Properties; #end
 import react.macro.ReactComponentMacro;
 import react.macro.MacroUtil.extractMetaString;
 
@@ -149,6 +148,7 @@ class ReactCSSMacro {
 		return hash;
 	}
 
+	#if css_types
 	static function getCssField(fields:Array<Field>):Null<Expr> {
 		for (f in fields) {
 			if (f.name != STYLES_FIELD) continue;
@@ -177,6 +177,9 @@ class ReactCSSMacro {
 
 		return null;
 	}
+	#else
+	static function getCssField(fields:Array<Field>):Null<Expr> return null;
+	#end
 
 	static function extractStyles(expr:Expr):String {
 		return switch (expr.expr) {
@@ -192,6 +195,7 @@ class ReactCSSMacro {
 				var path = ExprTools.toString(expr);
 				getRelativeFileContent(path, expr.pos);
 
+			#if css_types
 			case EObjectDecl(fields):
 				var buf = new StringBuf();
 
@@ -396,6 +400,7 @@ class ReactCSSMacro {
 				}
 
 				buf.toString();
+			#end
 
 			case _:
 				trace(expr);
@@ -403,6 +408,7 @@ class ReactCSSMacro {
 		};
 	}
 
+	#if css_types
 	static function resolveCSSLength(val:Any):CSSLength {
 		if (Std.isOfType(val, Int)) return (val :Int);
 		else if (Std.isOfType(val, Float)) return (val :Float);
@@ -414,6 +420,7 @@ class ReactCSSMacro {
 		else if (Std.isOfType(val, Float)) return (val :Float);
 		else return (val :String);
 	}
+	#end
 
 	static function getRelativeFileContent(path:String, ?skipErrors:Bool, ?pos:Position):Null<String> {
 		var base = Context.resolvePath(Context.getLocalModule().split('.').join('/') + '.hx');
