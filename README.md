@@ -285,7 +285,9 @@ Which will generate, with a state of `{selected: true, active: false}`:
 
 ## Limitations, roadmap
 
-I intend to try to generate some sourcemaps for generated CSS, see [#1](https://github.com/kLabz/haxe-react-css/issues/1)
+* I intend to try to generate some sourcemaps for generated CSS, see [#1](https://github.com/kLabz/haxe-react-css/issues/1)
+* Currently, identifiers are not allowed as values, see [#2](https://github.com/kLabz/haxe-react-css/issues/2)
+* Similarily, string interpolation is not applied in values, see [#3](https://github.com/kLabz/haxe-react-css/issues/3)
 
 This lib is still in early alpha status, and doesn't catch corner cases nicely.
 User errors will still often give bad error messages. If you get errors from
