@@ -22,6 +22,7 @@ typedef CssModule = {
 	var hash:String;
 	var className:String;
 	var styles:String;
+	var stylesPos:Position;
 	var clsInjection:Map<String, Type>;
 	var priority:Int;
 }
@@ -108,7 +109,15 @@ class ReactCSSMacro {
 		});
 
 		var stylesExpr = meta.params.length == 0 ? getCssField(fields) : meta.params[0];
-		if (stylesExpr == null) throw 'TODO: error';
+		if (stylesExpr == null) {
+			Context.error(
+				'Cannot find CSS source\n' +
+				'Either declare CSS inside this `@${META_NAME}` meta\n' +
+				'Or add a `${STYLES_FIELD}` field of type `react.css.Stylesheet`',
+				meta.pos
+			);
+		}
+
 		var styles = extractStyles(stylesExpr);
 
 		// Inject own class
@@ -122,11 +131,17 @@ class ReactCSSMacro {
 				var type = Context.resolveType(TPath({pack: [], name: ident}), Context.currentPos());
 				switch (type) {
 					case TInst(_, _): clsInjection.set(ident, type);
-					case _: trace('TODO: error');
+
+					case _:
+						// TODO: catch it earlier while we still have good positions
+						Context.error(
+							'React CSS: `$$Ident` notation is only allowed for components',
+							stylesExpr.pos
+						);
 				}
 			} catch (e) {
-				trace('TODO: error');
-				trace(e);
+				// TODO: catch it earlier while we still have good positions
+				Context.error('Cannot resolve component `$ident`', stylesExpr.pos);
 			}
 			return r.matched(0);
 		});
@@ -140,6 +155,7 @@ class ReactCSSMacro {
 			hash: hash,
 			className: className,
 			styles: styles,
+			stylesPos: stylesExpr.pos,
 			clsInjection: clsInjection,
 			priority: !cls.meta.has(PRIORITY_META_NAME) ? 1 : {
 				var meta = cls.meta.get().filter(m -> m.name == PRIORITY_META_NAME)[0];
@@ -189,8 +205,7 @@ class ReactCSSMacro {
 					return expr;
 
 				case _:
-					trace(f.kind);
-					throw 'TODO: wrong typing error';
+					Context.error('React CSS expects `${STYLES_FIELD}` field to be of `react.css.Stylesheet` type', f.pos);
 			}
 
 			trace(f.kind);
@@ -236,13 +251,14 @@ class ReactCSSMacro {
 								var t:Type;
 
 								if (f.quotes.match(Quoted)) {
-									// TODO: only allow when starting with hyphen?
+									// Skip checks when field is quoted
 									t = ComplexTypeTools.toType(macro :css.Properties.CSSNumberOrArray);
 								} else {
 									// Check for extra fields, make sure typing fits
 									t = Context.typeof(macro @:pos(f.expr.pos) {
 										var p:css.Properties = {};
 										var prop = p.$prop;
+										// Note: currently triggers https://github.com/kLabz/haxe-react-css/issues/2
 										prop = ${f.expr};
 										prop;
 									});
@@ -250,9 +266,9 @@ class ReactCSSMacro {
 
 								switch (f.expr) {
 									case macro $i{i}:
+										var found = false;
 										switch (t) {
 											case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
-												var found = false;
 												for (v in a.impl.get().statics.get()) {
 													if (v.name == i) {
 														switch Context.getTypedExpr(v.expr()).expr {
@@ -262,50 +278,51 @@ class ReactCSSMacro {
 																buf.add(val);
 
 															case _:
-																throw 'TODO: error';
+																Context.error('Cannot extract value from this identifier', f.expr.pos);
 														}
 
 														break;
 													}
 												}
 
-												if (!found) {
-													switch (ComplexTypeTools.toType(macro :css.GlobalValue)) {
-														case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
-															for (v in a.impl.get().statics.get()) {
-																if (v.name == i) {
-																	switch Context.getTypedExpr(v.expr()).expr {
-																		case ECast(e, _):
-																			found = true;
-																			var val = ExprTools.getValue(e);
-																			buf.add(val);
+											case _:
+										}
 
-																		case _:
-																			throw 'TODO: error';
-																	}
+										if (!found) {
+											switch (ComplexTypeTools.toType(macro :css.GlobalValue)) {
+												case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
+													for (v in a.impl.get().statics.get()) {
+														if (v.name == i) {
+															switch Context.getTypedExpr(v.expr()).expr {
+																case ECast(e, _):
+																	found = true;
+																	var val = ExprTools.getValue(e);
+																	buf.add(val);
 
-																	break;
-																}
+																case _:
+																	Context.error('Cannot extract value from this identifier', f.expr.pos);
 															}
 
-														case _:
-															throw 'TODO: error';
+															break;
+														}
 													}
 
-													if (!found) {
-														trace(i);
-														throw 'TODO: error';
-													}
-												}
+												case _: throw false;
+											}
 
-											case _:
-												throw 'TODO: error';
+											if (!found) {
+												Context.error(
+													'React CSS cannot resolve identifiers (yet)\n'
+													+ 'See https://github.com/kLabz/haxe-react-css/issues/2',
+													f.expr.pos
+												);
+											}
 										}
 
 									case (macro $i{ab}.$i) | (macro css.$ab.$i):
+										var found = false;
 										switch (t) {
 											case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
-												var found = false;
 												if (ab == a.name) {
 													for (v in a.impl.get().statics.get()) {
 														if (v.name == i) {
@@ -316,7 +333,7 @@ class ReactCSSMacro {
 																	buf.add(val);
 
 																case _:
-																	throw 'TODO: error';
+																	Context.error('Cannot extract value from this identifier', f.expr.pos);
 															}
 
 															break;
@@ -324,37 +341,41 @@ class ReactCSSMacro {
 													}
 												}
 
-												if (!found) {
-													switch (ComplexTypeTools.toType(macro :css.$ab)) {
-														case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
-															for (v in a.impl.get().statics.get()) {
-																if (v.name == i) {
-																	switch Context.getTypedExpr(v.expr()).expr {
-																		case ECast(e, _):
-																			found = true;
-																			var val = ExprTools.getValue(e);
-																			buf.add(val);
-
-																		case _:
-																			throw 'TODO: error';
-																	}
-
-																	break;
-																}
-															}
-
-														case _:
-															throw 'TODO: error';
-													}
-
-													if (!found) {
-														trace(ab, i);
-														throw 'TODO: error';
-													}
-												}
-
 											case _:
-												throw 'TODO: error';
+										}
+
+										if (!found) {
+											var t = try ComplexTypeTools.toType(macro :css.$ab) catch (_) null;
+											if (t != null) {
+												switch (t) {
+													case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
+														for (v in a.impl.get().statics.get()) {
+															if (v.name == i) {
+																switch Context.getTypedExpr(v.expr()).expr {
+																	case ECast(e, _):
+																		found = true;
+																		var val = ExprTools.getValue(e);
+																		buf.add(val);
+
+																	case _:
+																		Context.error('Cannot extract value from this identifier', f.expr.pos);
+																}
+
+																break;
+															}
+														}
+
+													case _:
+												}
+											}
+
+											if (!found) {
+												Context.error(
+													'React CSS cannot resolve identifiers (yet)\n'
+													+ 'See https://github.com/kLabz/haxe-react-css/issues/2',
+													f.expr.pos
+												);
+											}
 										}
 
 									case {expr: EConst(_)}:
@@ -378,16 +399,15 @@ class ReactCSSMacro {
 														buf.add(resolveCSSNumber(val));
 
 													case _:
-														trace(a.name);
-														throw 'TODO: error';
+														buf.add(Std.string(val));
 												}
 
 											case TAbstract(_.toString() => "Null", [TInst(_.toString() => "String", [])]):
 												buf.add(val);
 
 											case _:
-												trace(t);
-												throw 'TODO: error';
+												// css.Properties currently only has fields of String or enum abstract type
+												throw false;
 										}
 
 									case (macro Var($v{(s:String)})) | (macro Var($i{s})):
@@ -406,8 +426,7 @@ class ReactCSSMacro {
 										buf.add(values.join(' '));
 
 									case _:
-										trace(f.expr);
-										throw 'TODO: error';
+										Context.error('React CSS: unsupported type', f.expr.pos);
 								}
 
 								buf.add(';\n');
@@ -478,6 +497,8 @@ class ReactCSSMacro {
 		var out = Context.definedValue(OUT_DEFINE);
 		var sourcemap = Context.defined(SOURCEMAP_DEFINE);
 		var buff = new StringBuf();
+
+		// TODO: source map if enabled
 		if (base != null) buff.add(base + '\n');
 
 		if (cssModules != null) {
@@ -497,11 +518,16 @@ class ReactCSSMacro {
 							var path = cls.pack.concat([module, cls.name]).join('.');
 							var def = cssModules.get(path);
 
-							if (def == null) trace('TODO: error');
-							else styles = styles.replace("$" + ident, '.' + def.className);
+							if (def == null) {
+								Context.error(
+									'Cannot find className for component `${cls.name}`',
+									mod.stylesPos
+								);
+							} else {
+								styles = styles.replace("$" + ident, '.' + def.className);
+							}
 
-						case _:
-							trace('TODO: error (should not be possible)');
+						case _: throw false;
 					}
 				}
 
@@ -509,9 +535,8 @@ class ReactCSSMacro {
 			}
 		}
 
-		// TODO: make it work [with parcel?]
-		if (sourcemap) buff.add('/*# sourceMappingURL=${Context.definedValue(SOURCEMAP_DEFINE)} */\n');
-
+		// TODO: source map if enabled
+		// if (sourcemap) buff.add('/*# sourceMappingURL=${Context.definedValue(SOURCEMAP_DEFINE)} */\n');
 		// trace(buff.toString());
 
 		var dir = Path.directory(out);
