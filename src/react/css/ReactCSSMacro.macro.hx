@@ -81,7 +81,7 @@ class ReactCSSMacro {
 		fields.push({
 			name: CLASSNAME_FIELD,
 			doc: "Generated CSS class name for this component",
-			access: [AStatic, APublic],
+			access: [AStatic, APublic, AFinal],
 			kind: FVar(macro :String, macro $v{className}),
 			pos: meta.pos
 		});
