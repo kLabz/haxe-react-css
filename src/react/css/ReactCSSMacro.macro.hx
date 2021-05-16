@@ -484,7 +484,7 @@ class ReactCSSMacro {
 		// TODO: make it work [with parcel?]
 		if (sourcemap) buff.add('/*# sourceMappingURL=${Context.definedValue(SOURCEMAP_DEFINE)} */\n');
 
-		trace(buff.toString());
+		// trace(buff.toString());
 
 		var dir = Path.directory(out);
 		if (!FileSystem.exists(dir)) FileSystem.createDirectory(dir);
