@@ -266,49 +266,11 @@ class ReactCSSMacro {
 
 								switch (f.expr) {
 									case macro $i{i}:
-										var found = false;
-										switch (t) {
-											case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
-												for (v in a.impl.get().statics.get()) {
-													if (v.name == i) {
-														switch Context.getTypedExpr(v.expr()).expr {
-															case ECast(e, _):
-																found = true;
-																var val = ExprTools.getValue(e);
-																buf.add(val);
-
-															case _:
-																Context.error('Cannot extract value from this identifier', f.expr.pos);
-														}
-
-														break;
-													}
-												}
-
-											case _:
-										}
+										var found = extractEnumAbstractValue(t, i, buf, f.expr.pos);
 
 										if (!found) {
-											switch (ComplexTypeTools.toType(macro :css.GlobalValue)) {
-												case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
-													for (v in a.impl.get().statics.get()) {
-														if (v.name == i) {
-															switch Context.getTypedExpr(v.expr()).expr {
-																case ECast(e, _):
-																	found = true;
-																	var val = ExprTools.getValue(e);
-																	buf.add(val);
-
-																case _:
-																	Context.error('Cannot extract value from this identifier', f.expr.pos);
-															}
-
-															break;
-														}
-													}
-
-												case _: throw false;
-											}
+											var t = ComplexTypeTools.toType(macro :css.GlobalValue);
+											found = extractEnumAbstractValue(t, i, buf, f.expr.pos);
 
 											if (!found) {
 												Context.error(
@@ -320,53 +282,12 @@ class ReactCSSMacro {
 										}
 
 									case (macro $i{ab}.$i) | (macro css.$ab.$i):
-										var found = false;
-										switch (t) {
-											case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
-												if (ab == a.name) {
-													for (v in a.impl.get().statics.get()) {
-														if (v.name == i) {
-															switch Context.getTypedExpr(v.expr()).expr {
-																case ECast(e, _):
-																	found = true;
-																	var val = ExprTools.getValue(e);
-																	buf.add(val);
-
-																case _:
-																	Context.error('Cannot extract value from this identifier', f.expr.pos);
-															}
-
-															break;
-														}
-													}
-												}
-
-											case _:
-										}
+										var found = extractEnumAbstractValue(t, i, ab, buf, f.expr.pos);
 
 										if (!found) {
 											var t = try ComplexTypeTools.toType(macro :css.$ab) catch (_) null;
 											if (t != null) {
-												switch (t) {
-													case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
-														for (v in a.impl.get().statics.get()) {
-															if (v.name == i) {
-																switch Context.getTypedExpr(v.expr()).expr {
-																	case ECast(e, _):
-																		found = true;
-																		var val = ExprTools.getValue(e);
-																		buf.add(val);
-
-																	case _:
-																		Context.error('Cannot extract value from this identifier', f.expr.pos);
-																}
-
-																break;
-															}
-														}
-
-													case _:
-												}
+												found = extractEnumAbstractValue(t, i, buf, f.expr.pos);
 											}
 
 											if (!found) {
@@ -380,35 +301,7 @@ class ReactCSSMacro {
 
 									case {expr: EConst(_)}:
 										var val = ExprTools.getValue(f.expr);
-
-										switch (t) {
-											case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
-												switch (a.name) {
-													case "CSSLengthOrArray":
-														// Note: can't be an array, we're in EConst case
-														buf.add(resolveCSSLength(val));
-
-													case "CSSNumberOrArray":
-														// Note: can't be an array, we're in EConst case
-														buf.add(resolveCSSNumber(val));
-
-													case "CSSLength":
-														buf.add(resolveCSSLength(val));
-
-													case "CSSNumber":
-														buf.add(resolveCSSNumber(val));
-
-													case _:
-														buf.add(Std.string(val));
-												}
-
-											case TAbstract(_.toString() => "Null", [TInst(_.toString() => "String", [])]):
-												buf.add(val);
-
-											case _:
-												// css.Properties currently only has fields of String or enum abstract type
-												throw false;
-										}
+										addConstValue(buf, val, t, f.expr.pos);
 
 									case (macro Var($v{(s:String)})) | (macro Var($i{s})):
 										while (!s.startsWith('--')) s = '-' + s;
@@ -426,7 +319,14 @@ class ReactCSSMacro {
 										buf.add(values.join(' '));
 
 									case _:
-										Context.error('React CSS: unsupported type', f.expr.pos);
+										try {
+											var val = ExprTools.getValue(f.expr);
+											// TODO: can't be an array?
+											addConstValue(buf, val, t, f.expr.pos);
+										} catch (e) {
+											trace(e);
+											Context.error('React CSS: unsupported expression', f.expr.pos);
+										}
 								}
 
 								buf.add(';\n');
@@ -459,6 +359,83 @@ class ReactCSSMacro {
 		if (Std.isOfType(val, Int)) return (val :Int);
 		else if (Std.isOfType(val, Float)) return (val :Float);
 		else return (val :String);
+	}
+
+	static function extractEnumAbstractValue(
+		t:Type,
+		ident:String,
+		?abstractName:String,
+		buf:StringBuf,
+		pos:Position
+	):Bool {
+		switch (t) {
+			case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
+				if (abstractName == null || abstractName == a.name) {
+					for (v in a.impl.get().statics.get()) {
+						if (v.name == ident) {
+							switch Context.getTypedExpr(v.expr()).expr {
+								case ECast(e, _):
+									var val = ExprTools.getValue(e);
+									buf.add(val);
+									return true;
+
+								case _:
+									Context.error('Cannot extract value from this identifier', pos);
+							}
+
+							break;
+						}
+					}
+				}
+
+			case _: throw false;
+		}
+
+		return false;
+	}
+
+	static function addConstValue(buf:StringBuf, val:Any, t:Type, pos:Position):Void {
+		val = maybeApplyStringInterp(val, pos);
+
+		switch (t) {
+			case TAbstract(_, [TAbstract(_.get() => a, [])]) | TAbstract(_.get() => a, []):
+				switch (a.name) {
+					case "CSSLengthOrArray":
+						buf.add(resolveCSSLength(val));
+
+					case "CSSNumberOrArray":
+						buf.add(resolveCSSNumber(val));
+
+					case "CSSLength":
+						buf.add(resolveCSSLength(val));
+
+					case "CSSNumber":
+						buf.add(resolveCSSNumber(val));
+
+					case _:
+						buf.add(Std.string(val));
+				}
+
+			case TAbstract(_.toString() => "Null", [TInst(_.toString() => "String", [])]):
+				buf.add(val);
+
+			case _:
+				// css.Properties currently only has fields of String or enum abstract type
+				throw false;
+		}
+	}
+
+	static function maybeApplyStringInterp(val:Any, pos:Position):Any {
+		if (Std.isOfType(val, String)) {
+			try {
+				var e = haxe.macro.MacroStringTools.formatString(val, pos);
+				// TODO: resolve identifiers somehow
+				return ExprTools.getValue(e);
+			} catch (_) {}
+		}
+
+		return val;
+
 	}
 	#end
 
@@ -502,7 +479,7 @@ class ReactCSSMacro {
 		if (base != null) buff.add(base + '\n');
 
 		if (cssModules != null) {
-			// Apply priority  levels to add control over overrides order
+			// Apply priority levels to add control over overrides order
 			// (higher priority = included later in final css file)
 			var modules:Array<CssModule> = [for (mod in cssModules) mod];
 			modules.sort((m1, m2) -> m1.priority - m2.priority);
