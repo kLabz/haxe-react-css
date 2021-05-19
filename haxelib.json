@@ -4,12 +4,12 @@
   "tags": [
     "react"
   ],
-  "description": "TODO: description",
+  "description": "Compile-time 'CSS-in-Haxe' solution for haxe-react",
   "contributors": [
     "klabz"
   ],
-  "releasenote": "Initial release",
-  "version": "0.1.0",
+  "releasenote": "Add support for media queries",
+  "version": "0.2.0",
   "url": "https://github.com/kLabz/haxe-react-css",
   "classPath": "src",
   "dependencies": {}

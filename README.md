@@ -213,6 +213,35 @@ the build macro not to by adding a `@:keep` meta to it.
 
 ## Advanced usage
 
+### Media queries
+
+When using plain CSS, you can write your media queries like you would do in CSS.
+Using CSS object declaration as static field with [css-types][css-types], you need to add a
+separate field for media queries:
+
+```haxe
+@:css
+class MyComponent extends ReactComponent {
+  static var styles:Stylesheet = {
+    '_': {
+      margin: '2em'
+    }
+  };
+
+  static var mediaQueries:Dynamic<Stylesheet> = {
+    'max-width: 799px': {
+      '_': {
+        margin: '0.5em'
+      }
+    }
+  };
+
+  override function render():ReactFragment {
+    return <div className={className}>My component</div>;
+  }
+}
+```
+
 ### Handle components order in generated CSS
 
 CSS declaration order matters, and even if your CSS is defined on a
@@ -251,6 +280,7 @@ class ReactCSSMacro {
   public static var PRIORITY_META_NAME = ':css.priority';
 
   public static var STYLES_FIELD = 'styles';
+  public static var MEDIA_QUERIES_FIELD = 'mediaQueries';
   public static var CLASSNAME_FIELD = 'className';
 
   public static var BASE_DEFINE = 'react.css.base';
@@ -262,7 +292,7 @@ class ReactCSSMacro {
 }
 ```
 
-https://github.com/kLabz/haxe-react-css/blob/9f3c3eea25989fb290dc190945c6ead3c7960a70/src/react/css/ReactCSSMacro.macro.hx#L32-L41
+https://github.com/kLabz/haxe-react-css/blob/51bae1b92b31996bdd0daec376148b9ad8b55412/src/react/css/ReactCSSMacro.macro.hx#L33-L43
 
 ### Usage with classnames lib
 
