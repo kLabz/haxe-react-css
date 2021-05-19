@@ -34,6 +34,7 @@ class ReactCSSMacro {
 	public static var PRIORITY_META_NAME = ':css.priority';
 
 	public static var STYLES_FIELD = 'styles';
+	public static var MEDIA_QUERIES_FIELD = 'mediaQueries';
 	public static var CLASSNAME_FIELD = 'className';
 
 	public static var BASE_DEFINE = 'react.css.base';
@@ -62,8 +63,15 @@ class ReactCSSMacro {
 		// Skip build during completion,
 		// but hide `styles` field unless it has `@:keep` meta
 		if (Context.defined('display')) {
+			var foundStyles = false;
+			var foundMediaQueries = false;
+
 			for (f in fields) {
-				if (f.name != STYLES_FIELD) continue;
+				switch (f.name) {
+					case n if (n == STYLES_FIELD): foundStyles = true;
+					case n if (n == MEDIA_QUERIES_FIELD): foundMediaQueries = true;
+					case _: continue;
+				}
 
 				if (!Lambda.exists(f.meta, m -> m.name == ':keep')) {
 					f.meta.push({
@@ -73,7 +81,7 @@ class ReactCSSMacro {
 					});
 				}
 
-				break;
+				if (foundStyles && foundMediaQueries) break;
 			}
 
 			return fields;
@@ -119,6 +127,11 @@ class ReactCSSMacro {
 		}
 
 		var styles = extractStyles(stylesExpr);
+
+		#if css_types
+		var mediaQueriesExpr = meta.params.length == 0 ? getMediaQueries(fields) : null;
+		if (mediaQueriesExpr != null) styles += extractMediaQueries(mediaQueriesExpr);
+		#end
 
 		// Inject own class
 		styles = ~/(^|[^\w])_([^\w])/g.replace(styles, '$1.$className$2');
@@ -213,8 +226,39 @@ class ReactCSSMacro {
 
 		return null;
 	}
+
+	static function getMediaQueries(fields:Array<Field>):Null<Expr> {
+		for (f in fields) {
+			if (f.name != MEDIA_QUERIES_FIELD) continue;
+
+			// Force dce of field unless `@:keep`
+			if (!Lambda.exists(f.meta, m -> m.name == ':keep')) fields.remove(f);
+
+			switch (f.kind) {
+				case FVar(TPath({name: "Dynamic", params: [TPType(
+					TPath({name: "Dynamic", params: [TPType(TPath({name: "Properties"}))]})
+				)]}), expr):
+					return expr;
+
+				case FVar(TPath({name: "Dynamic", params: [TPType(TPath({name: "Stylesheet", params: []}))]}), expr):
+					return expr;
+
+				case FVar(null, expr):
+					Context.typeExpr(macro @:pos(expr.pos) ($expr :Dynamic<Dynamic<css.Properties>>));
+					return expr;
+
+				case _:
+					Context.error('React CSS expects `${MEDIA_QUERIES_FIELD}` field to be of `Dynamic<react.css.Stylesheet>` type', f.pos);
+			}
+
+			trace(f.kind);
+		}
+
+		return null;
+	}
 	#else
 	static function getCssField(fields:Array<Field>):Null<Expr> return null;
+	static function getMediaQueries(fields:Array<Field>):Null<Expr> return null;
 	#end
 
 	static function extractStyles(expr:Expr):String {
@@ -333,7 +377,7 @@ class ReactCSSMacro {
 							}
 
 						case _:
-							throw 'Invalid value';
+							Context.error('Invalid value', f.expr.pos);
 					}
 
 					buf.add('}\n');
@@ -349,6 +393,25 @@ class ReactCSSMacro {
 	}
 
 	#if css_types
+	static function extractMediaQueries(expr:Expr):String {
+		return switch (expr.expr) {
+			case EObjectDecl(fields):
+				var buf = new StringBuf();
+
+				for (f in fields) {
+					buf.add('@media (${f.field}) {\n');
+					buf.add(extractStyles(f.expr));
+					buf.add('}\n');
+				}
+
+				buf.toString();
+
+			case _:
+				trace(expr);
+				Context.error('Cannot parse media queries css source', expr.pos);
+		};
+	}
+
 	static function resolveCSSLength(val:Any):CSSLength {
 		if (Std.isOfType(val, Int)) return (val :Int);
 		else if (Std.isOfType(val, Float)) return (val :Float);
