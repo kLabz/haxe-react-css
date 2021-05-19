@@ -376,6 +376,9 @@ class ReactCSSMacro {
 								buf.add(';\n');
 							}
 
+						case EBlock([]):
+							// Empty object
+
 						case _:
 							Context.error('Invalid value', f.expr.pos);
 					}
@@ -385,6 +388,10 @@ class ReactCSSMacro {
 
 				buf.toString();
 			#end
+
+			case EBlock([]):
+				// Empty object
+				"";
 
 			case _:
 				trace(expr);
@@ -405,6 +412,10 @@ class ReactCSSMacro {
 				}
 
 				buf.toString();
+
+			case EBlock([]):
+				// Empty object
+				"";
 
 			case _:
 				trace(expr);
