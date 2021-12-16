@@ -44,13 +44,13 @@ Configuration is made with defines:
 -D react.css.base=base.css
 ```
 
-* Use `react.css.out` define to set the ouput file for generated CSS
+* Use `react.css.out` define to set the output file for generated CSS
 * `react.css.base` define is optional and points to a CSS file you want to
   include at the beginning of generated CSS file.
 
 Other defines are available, see [Advanced usage](#advanced-usage).
 
-For convenience, I can add those to your `import.hx` when working with [css-types][css-types]:
+For convenience, you can add those to your `import.hx` when working with [css-types][css-types]:
 
 ```haxe
 import css.GlobalValue;
