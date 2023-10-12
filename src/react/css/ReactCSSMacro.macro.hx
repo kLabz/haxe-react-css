@@ -99,7 +99,7 @@ class ReactCSSMacro {
 
 		for (f in fields) {
 			if (f.name == CLASSNAME_FIELD) {
-				#if (haxe >= version("4.2.2"))
+				#if (haxe >= version("4.3.0"))
 				Context.reportError('@:css needs to create a `$CLASSNAME_FIELD` field', meta.pos);
 				Context.error('... But field is already declared here', f.pos);
 				#else
@@ -277,12 +277,10 @@ class ReactCSSMacro {
 
 			#if css_types
 			case EObjectDecl(fields):
-				var buf = new StringBuf();
+				var ret = new StringBuf();
 
 				for (f in fields) {
-					var selector = f.field;
-					buf.add(selector);
-					buf.add(' {\n');
+					var buf = new StringBuf();
 
 					switch (f.expr.expr) {
 						case EObjectDecl(properties):
@@ -308,70 +306,7 @@ class ReactCSSMacro {
 									});
 								}
 
-								switch (f.expr) {
-									case macro $i{i}:
-										var found = extractEnumAbstractValue(t, i, buf, f.expr.pos);
-
-										if (!found) {
-											var t = ComplexTypeTools.toType(macro :css.GlobalValue);
-											found = extractEnumAbstractValue(t, i, buf, f.expr.pos);
-
-											if (!found) {
-												Context.error(
-													'React CSS cannot resolve identifiers (yet)\n'
-													+ 'See https://github.com/kLabz/haxe-react-css/issues/2',
-													f.expr.pos
-												);
-											}
-										}
-
-									case (macro $i{ab}.$i) | (macro css.$ab.$i):
-										var found = extractEnumAbstractValue(t, i, ab, buf, f.expr.pos);
-
-										if (!found) {
-											var t = try ComplexTypeTools.toType(macro :css.$ab) catch (_) null;
-											if (t != null) {
-												found = extractEnumAbstractValue(t, i, buf, f.expr.pos);
-											}
-
-											if (!found) {
-												Context.error(
-													'React CSS cannot resolve identifiers (yet)\n'
-													+ 'See https://github.com/kLabz/haxe-react-css/issues/2',
-													f.expr.pos
-												);
-											}
-										}
-
-									case {expr: EConst(_)}:
-										var val = ExprTools.getValue(f.expr);
-										addConstValue(buf, val, t, f.expr.pos);
-
-									case (macro Var($v{(s:String)})) | (macro Var($i{s})):
-										while (!s.startsWith('--')) s = '-' + s;
-										buf.add('var($s)');
-
-									case macro $a{items}: // EArrayDecl(items):
-										var values:Array<String> = [];
-										for (i in items) {
-											values.push({
-												var val = ExprTools.getValue(i);
-												resolveCSSLength(val);
-											});
-										}
-
-										buf.add(values.join(' '));
-
-									case _:
-										try {
-											var val = ExprTools.getValue(f.expr);
-											// TODO: can't be an array?
-											addConstValue(buf, val, t, f.expr.pos);
-										} catch (e) {
-											trace(e);
-											Context.error('React CSS: unsupported expression', f.expr.pos);
-										}
-								}
+								renderValue(buf, f.expr, t, true);
 
 								buf.add(';\n');
 							}
@@ -380,13 +315,19 @@ class ReactCSSMacro {
 							// Empty object
 
 						case _:
+							trace(f.expr.expr);
 							Context.error('Invalid value', f.expr.pos);
 					}
 
-					buf.add('}\n');
+					if (buf.length > 0) {
+						ret.add(trimLines(f.field));
+						ret.add(' {\n');
+						ret.add(buf.toString());
+						ret.add('}\n');
+					}
 				}
 
-				buf.toString();
+				ret.toString();
 			#end
 
 			case EBlock([]):
@@ -397,6 +338,82 @@ class ReactCSSMacro {
 				trace(expr);
 				Context.error('Cannot parse css source', expr.pos);
 		};
+	}
+
+	static function renderValue(
+		buf:StringBuf,
+		expr:Expr,
+		expectedType:Type,
+		?topLevel:Bool = false
+	):Void {
+		switch (expr) {
+			case macro $i{i}:
+				var found = extractEnumAbstractValue(expectedType, i, buf, expr.pos);
+
+				if (!found) {
+					var t = ComplexTypeTools.toType(macro :css.GlobalValue);
+					found = extractEnumAbstractValue(t, i, buf, expr.pos);
+
+					if (!found) {
+						Context.error(
+							'React CSS cannot resolve identifiers (yet)\n'
+							+ 'See https://github.com/kLabz/haxe-react-css/issues/2',
+							expr.pos
+						);
+					}
+				}
+
+			case (macro $i{ab}.$i) | (macro css.$ab.$i):
+				var found = extractEnumAbstractValue(expectedType, i, ab, buf, expr.pos);
+
+				if (!found) {
+					var t = try ComplexTypeTools.toType(macro :css.$ab) catch (_) null;
+					if (t != null) {
+						found = extractEnumAbstractValue(t, i, buf, expr.pos);
+					}
+
+					if (!found) {
+						Context.error(
+							'React CSS cannot resolve identifiers (yet)\n'
+							+ 'See https://github.com/kLabz/haxe-react-css/issues/2',
+							expr.pos
+						);
+					}
+				}
+
+			case {expr: EConst(_)}:
+				var val = ExprTools.getValue(expr);
+				addConstValue(buf, val, expectedType, expr.pos);
+
+			case (macro Var($v{(s:String)})) | (macro Var($i{s})):
+				while (!s.startsWith('--')) s = '-' + s;
+				buf.add('var($s)');
+
+			case macro Important($e{e}) if (topLevel):
+				renderValue(buf, e, expectedType, false);
+				buf.add(' !important');
+
+			case macro $a{items}: // EArrayDecl(items):
+				var values:Array<String> = [];
+				for (i in items) {
+					values.push({
+						var val = ExprTools.getValue(i);
+						resolveCSSLength(val);
+					});
+				}
+
+				buf.add(values.join(' '));
+
+			case _:
+				try {
+					var val = ExprTools.getValue(expr);
+					// TODO: can't be an array?
+					addConstValue(buf, val, expectedType, expr.pos);
+				} catch (e) {
+					trace(e);
+					Context.error('React CSS: unsupported expression', expr.pos);
+				}
+		}
 	}
 
 	#if css_types
@@ -462,7 +479,11 @@ class ReactCSSMacro {
 					}
 				}
 
-			case _: throw false;
+			case TAbstract(_.toString() => "Null", [TInst(_.toString() => "String", [])]):
+				return false;
+
+			case _:
+				throw false;
 		}
 
 		return false;
@@ -593,5 +614,25 @@ class ReactCSSMacro {
 		var dir = Path.directory(out);
 		if (!FileSystem.exists(dir)) FileSystem.createDirectory(dir);
 		File.saveContent(out, buff.toString());
+	}
+
+	static function trimLines(str:String):String {
+		var lines = str.split("\n").map(StringTools.trim);
+
+		// Remove leading empty lines
+		while (lines.length > 0) {
+			var line = lines[0];
+			if (line != "") break;
+			lines.shift();
+		}
+
+		// Remove trailing empty lines
+		while (lines.length > 0) {
+			var line = lines[lines.length - 1];
+			if (line != "") break;
+			lines.pop();
+		}
+
+		return lines.join("\n");
 	}
 }
